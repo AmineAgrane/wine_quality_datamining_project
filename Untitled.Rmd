@@ -1,0 +1,34 @@
+---
+title: "Wine Quality Prediction"
+author: "Amine Agrane & Lydia Khelfane"
+date : "10/02/2021" 
+output: html_notebook
+
+---
+
+```{r}
+getwd()
+```
+
+
+# Exploratory Data Analysis on the wine dataset
+
+##### Load the wine dataset
+We start by reading the data which is stored in the csv file `winequality.csv`. The file is loaded using the `read.csv` command, along with the `as.data.frame` command which store our data inside a structure of dataframe type.
+
+```{r}
+# Load the data
+wineData <- read.csv(file = './data/winequality.csv')
+df_wine <- as.data.frame(wineData)
+head(df_wine)
+```
+##### Basic analysis on the dataset
+```{r}
+
+```
+
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
