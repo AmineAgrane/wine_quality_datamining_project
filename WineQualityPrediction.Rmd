@@ -3,10 +3,10 @@ title: "Wine Quality Prediction"
 author: "Amine Agrane & Lydia Khelfane"
 date: "10/02/2021"
 output:
-  html_notebook: default
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
+  html_notebook: default
 ---
 
 
@@ -14,6 +14,8 @@ output:
 # import all the library
 library(forcats)
 library(ggplot2)
+library(rpart)
+library(rpart.plot)
 ```
 
 # Project and Dataset Presentation    
@@ -100,14 +102,6 @@ cat('Number of NAN values for each variable :', colSums(is.na(df_wine)))
 # Preparing the data
 We want to predict the quality of the wine (score between 1 and 10) by using the rest of the feature variables. Here, wine quality is the variable we want to predict (Y variable).
 
-##### *Drop unnecessary columns*
-
-We start by dropping unnecessary data. We drop the `good` variable because it's deriavated from the quality score feature, so it doesn't bring us any meaningful insight that helps us predict the wine quality score.
-
-```{r}
-df_wine <- subset (df_wine, select = -good)
-```
-
 ##### *Inspect the wine quality score feature*
 
 Let's take a look at the distribution of the wine quality score in our dataset. We see that Wine quality appear to follow a bell shaped distribution (Gaussian/Normal distribution). This implies most wines are of average quality and few are good or bad
@@ -134,39 +128,24 @@ True => "Good" and False => "Bad".
 
 We transform our win quality score variable to a binary variable by achieving a binning on its values, i.e we fix a specific threshold and associate each score to a unique class, the class "Bad" for the lower quality wines and the class "Good" for the best wines. 
 
-First threshold :
-
-  - Good : scores from 6 to 9.
-  - Bad : scores from 1 to 5.
-
-
-Second threshold :
-
+Threshold :
   - Good : scores from 7 to 9.
   - Bad : scores from 1 to 6.
 
 
 ```{r}
-cat('Threshold 1 distribution :', table(ifelse(df_wine$quality<=6,'Bad', ifelse(df_wine$quality>=7, "Good",""))))
-cat('Threshold 2 distribution :', table(ifelse(df_wine$quality<=5,'Bad', ifelse(df_wine$quality>=6, "Good",""))))
+cat('Threshold  distribution :', table(ifelse(df_wine$quality<=6,'Bad', ifelse(df_wine$quality>=7, "Good",""))))
 ```
-
-For a better score/class distribution, we'll choose low scores to be from 1 to 5 and high score from 6 to 9.
 
 
 ```{r}
 # We drop the quality column and replace it with the new qualityClass variable.
-qualityClass <- ifelse(df_wine$quality<=5,'Bad', ifelse(df_wine$quality>=6, 'Good',''))
+qualityClass <- as.factor(ifelse(df_wine$quality<=6,'Bad', ifelse(df_wine$quality>=7, 'Good','')))
 df_wine <- data.frame(subset (df_wine, select = -quality), qualityClass)
 ```
 
 
-```{r}
-ggplot(df_wine, aes(x =fct_reorder(qualityFactor, alcohol) , y = alcohol, fill=qualityFactor))+ geom_boxplot()
-ggplot(df_wine, aes(x =fct_reorder(qualityFactor, density) , y = density, fill=qualityFactor))+ geom_boxplot()
-```
-
-
+# Build a Decision Tree Model
 ##### *Splitting the data into training and testing sets*
 We split our data into two different sets : 
 
@@ -185,5 +164,16 @@ train_index <- sample(dataset_size, train_set_size, replace=FALSE)
 
 training_data <- df_wine[train_index, ]
 test_data <- df_wine[-train_index,]
+```
+
+
+##### *Instantiate and train the decision tree model*
+Train the model the Using rpart library.
+
+```{r}
+rpart_model <- rpart(qualityClass~., data=training_data, method="class")
+predict_rpart <- predict(rpart_model,  test_data[, -13], type="class")
+mean(predict_rpart != test_data[, 13])
+rpart.plot(rpart_model)
 ```
 
