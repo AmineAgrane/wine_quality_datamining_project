@@ -102,7 +102,7 @@ cat('Number of NAN values for each variable :', colSums(is.na(df_wine)))
 # Preparing the data
 We want to predict the quality of the wine (score between 1 and 10) by using the rest of the feature variables. Here, wine quality is the variable we want to predict (Y variable).
 
-##### *Inspect the wine quality score feature*
+##### Inspect the wine quality score feature
 
 Let's take a look at the distribution of the wine quality score in our dataset. We see that Wine quality appear to follow a bell shaped distribution (Gaussian/Normal distribution). This implies most wines are of average quality and few are good or bad
 
@@ -119,7 +119,7 @@ table(df_wine$quality)
 
 
 
-##### *Binning the Wine Quality Score Variable*
+##### Binning the Wine Quality Score Variable
 
 We want to predict the quality of the wine based on the rest of the variables present in our dataset. We see from the above table that the wine quality score variable takes 7 different values (3, 4, 5, 6, 7, 8, 9) inside our dataset. If we want to build a machine learning model to predict this variable, we'll use a classification model that will achieve a multiclass classification, in our case we have 7 distinct classes (7 possible values).
 
@@ -157,23 +157,59 @@ We split our data into two different sets :
 # we set the seed to get reproducible results
 set.seed(10)
 
-# split the datasets
+# get the training dataset indexes
 dataset_size <- dim(df_wine)[1]
 train_set_size <- round(0.8*dataset_size)
 train_index <- sample(dataset_size, train_set_size, replace=FALSE)
 
+# split into train and test sets
 training_data <- df_wine[train_index, ]
 test_data <- df_wine[-train_index,]
 ```
 
 
 ##### *Instantiate and train the decision tree model*
-Train the model the Using rpart library.
+
+We will begin by training a classification tree model. Although almost any implementation of decision trees can be used to perform classification tree modeling, the `rpart` (recursive partitioning) package offers the most faithful implementation of classification trees as they were described by the CART team. As the classic R implementation of CART, the rpart package is also well-documented and supported with functions for visualizing and evaluating the rpart models.
+
+Using the R formula interface, we can specify `qualityClass` as the outcome variable and use the dot notation to allow all the other columns in the training_data data frame to be used as predictors. 
 
 ```{r}
 rpart_model <- rpart(qualityClass~., data=training_data, method="class")
+
+# choosing the best complexity parameter "cp" to prune the tree
+cp.optim <- rpart_model$cptable[which.min(rpart_model$cptable[,"xerror"]),"CP"]
+
+# tree prunning using the best complexity parameter. For more in
+tree <- prune(rpart_model, cp=cp.optim)
+```
+
+
+##### Visualization of the decision tree model
+
+The tree can be understood using only the preceding output, it is often more readable using visualization. After installing the package using the install.packages(“rpart.plot”) command, the rpart.plot() function produces a tree diagram from any rpart model object. The following commands plot the classification tree we built earlier which produces a tree diagram is as follows:
+
+For each node in the tree, the number of examples reaching the decision point is listed. For instance, all 5198 examples (100% of the examples) begin at the root node, of which 64% have alcohol < 11. Because alcohol was used first in the tree, it is the single most important predictor of wine quality class.
+
+```{r}
+# Visualise the decision tree model graphically
+rpart.plot(rpart_model, extra=101)
+```
+
+
+
+# Model Evaluation
+
+##### Prediction on the test set
+```{r}
+library(caret,quietly = TRUE)
 predict_rpart <- predict(rpart_model,  test_data[, -13], type="class")
-mean(predict_rpart != test_data[, 13])
-rpart.plot(rpart_model)
+t <- table(test_data[, 13], predict_rpart)
+confusionMatrix(t)
+```
+
+```{r}
+#
+#mean(predict_rpart != test_data[, 13])
 ```
 
