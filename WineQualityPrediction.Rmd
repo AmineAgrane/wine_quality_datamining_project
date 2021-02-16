@@ -1,8 +1,12 @@
 ---
 title: "Wine Quality Prediction"
 author: "Amine Agrane & Lydia Khelfane"
-date : "10/02/2021" 
-output: html_notebook
+date: "10/02/2021"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
 ---
 
 
@@ -12,12 +16,15 @@ library(forcats)
 library(ggplot2)
 ```
 
-# Dataset and variables Presentation
+# Project and Dataset Presentation    
 In this notebook we will use the data from the Kaggle Repository (https://www.kaggle.com/rajyellow46/wine-quality) by P. Cortez, A. Cerdeira, F. Almeida, T. Matos, and J. Reis. The data include examples of red and white wines from Portugal-one of the world’s leading wine-producing countries. 
 
 For each wine, a laboratory analysis measured characteristics such as acidity, sugar content, chlorides, sulfur, alcohol, pH, and density. The samples were then rated in a blind tasting by panels of no less than three judges on a quality scale ranging from zero (very bad) to 10 (excellent). In the case of judges disagreeing on the rating, the median value was used.
 
+##### *Objective of this notebook*
+The objective that we want to achieve throw this notebook is to build a machine learning model of classification type, that will predict if a wine is considered as good or note. The model takes as input some wine characteristics (alcohol content, acidity, sugar proportion, etc), and gives as output a binary variable that describes the quality of the wine ("Good" or "Bad"). We'll use a decision tree as our classification model.
 
+##### *Dataset description*
 The wine dataset is composed by a total of 14 different variables : 
 
 **1- fixed acidity (tartaric acid - g/dm3)** : most acids involved with wine or fixed or nonvolatile (do not evaporate readily)
@@ -44,12 +51,12 @@ The wine dataset is composed by a total of 14 different variables :
 
 **12- quality**: score between 0 and 10 that describes the quality of the wine.
 
-**13- good**: (score between 0 and 10)
+**13- good**: boolean variable related to the quality variable, is true when quality > 7 else the variable is false.
 
 **14- color**: color of the wine. There are two type wine, red wine and white wine.
 
 ## Exploratory Data Analysis on the wine dataset
-##### Load the wine dataset
+##### *Load the wine dataset*
 
 We start by reading the data which is stored in the csv file `winequality.csv`. The file is loaded using the `read.csv` command, along with the `as.data.frame` command which store our data inside a structure of dataframe type.
 
@@ -61,7 +68,7 @@ tail(df_wine)
 ```
 
 
-#### Basic analysis on the dataset
+## Basic analysis on the dataset
 Now we're gonna achieve some basic analysis on our wine dataset to get a better understanding of its contents, size and structure.
 
 **Dimension of our wine Dataset :**
@@ -93,46 +100,64 @@ cat('Number of NAN values for each variable :', colSums(is.na(df_wine)))
 # Preparing the data
 We want to predict the quality of the wine (score between 1 and 10) by using the rest of the feature variables. Here, wine quality is the variable we want to predict (Y variable).
 
-First let's take a look at the distribution of the wine quality score in our dataset. We see that Wine quality appear to follow a bell shaped distribution (Gaussian/Normal distribution). This implies most wines are of average quality and few are good or bad
+##### *Drop unnecessary columns*
+
+We start by dropping unnecessary data. We drop the `good` variable because it's deriavated from the quality score feature, so it doesn't bring us any meaningful insight that helps us predict the wine quality score.
+
+```{r}
+df_wine <- subset (df_wine, select = -good)
+```
+
+##### *Inspect the wine quality score feature*
+
+Let's take a look at the distribution of the wine quality score in our dataset. We see that Wine quality appear to follow a bell shaped distribution (Gaussian/Normal distribution). This implies most wines are of average quality and few are good or bad
+
 ```{r}
 # Simple Bar Plot
 hist(df_wine$quality, main="Wine Quality Score Distribution",ylab="Count", xlab="Wine Quality Score", breaks=10, , col= "darkgreen")
 ```
 
-Now let's check the frequency of each wine quality score. From the above table, we see that an approximate 45% of the wine quality scoes have a 6 score value.
+Now let's check the frequency of each wine quality score. From the above table, we see that an approximate 45% of the wine quality scores have a 6 score value.
+
 ```{r}
 table(df_wine$quality)
 ```
 
-## Binning the Quality Score Variable
-We want to predict the quality of the wine based on the otehr 
 
 
-We turn our Y variable into a two class variable. We will have the class "bad" for the lower wines (in terms of quality) and the class "good" for the best wines. We have to set a treshold on the wine quality score to assert if it's a good or bad wine.
+##### *Binning the Wine Quality Score Variable*
+
+We want to predict the quality of the wine based on the rest of the variables present in our dataset. We see from the above table that the wine quality score variable takes 7 different values (3, 4, 5, 6, 7, 8, 9) inside our dataset. If we want to build a machine learning model to predict this variable, we'll use a classification model that will achieve a multiclass classification, in our case we have 7 distinct classes (7 possible values).
+
+The question we want to answer through this notebook is whatever a wine is good or bad ? In our case, the output variable (Y) that we want to get is a binary variable 
+True => "Good" and False => "Bad". 
+
+We transform our win quality score variable to a binary variable by achieving a binning on its values, i.e we fix a specific threshold and associate each score to a unique class, the class "Bad" for the lower quality wines and the class "Good" for the best wines. 
 
 First threshold :
-- High : scores from 6 to 9.
-- Low : scores from 1 to 5.
+
+  - Good : scores from 6 to 9.
+  - Bad : scores from 1 to 5.
 
 
-Scond threshold :
-- High : scores from 6 to 9.
-- Low : scores from 1 to 5.
+Second threshold :
+
+  - Good : scores from 7 to 9.
+  - Bad : scores from 1 to 6.
 
 
 ```{r}
-cat('First threshold class distribution : ', table(ifelse(df_wine$quality<=6,'Bad', ifelse(df_wine$quality>=7, "Good","")) ))
-cat('Second threshold class distribution : ', table(ifelse(df_wine$quality<=5,'Bad', ifelse(df_wine$quality>=6, "Good",""))))
+cat('Threshold 1 distribution :', table(ifelse(df_wine$quality<=6,'Bad', ifelse(df_wine$quality>=7, "Good",""))))
+cat('Threshold 2 distribution :', table(ifelse(df_wine$quality<=5,'Bad', ifelse(df_wine$quality>=6, "Good",""))))
 ```
 
-For a better class distribution, we'll choose low scores to be from 1 to 5 and high score from 6 to 9.
+For a better score/class distribution, we'll choose low scores to be from 1 to 5 and high score from 6 to 9.
 
 
 ```{r}
-qualityFactor <-ifelse(df_wine$quality<=4,'low', 
-            ifelse(df_wine$quality>=5 & df_wine$quality<=7, "average", 
-            ifelse(df_wine$quality>7,"high", "")))
-wineData <- data.frame(df_wine, qualityFactor)
+# We drop the quality column and replace it with the new qualityClass variable.
+qualityClass <- ifelse(df_wine$quality<=5,'Bad', ifelse(df_wine$quality>=6, 'Good',''))
+df_wine <- data.frame(subset (df_wine, select = -quality), qualityClass)
 ```
 
 
@@ -142,13 +167,23 @@ ggplot(df_wine, aes(x =fct_reorder(qualityFactor, density) , y = density, fill=q
 ```
 
 
-## Data Preparation
-As decision tree is the model used, there is no need for data preprocessing. Therefore, the training and test data can be prepared directly as the data is sorted randomly. A proportion of 75% to 25% is chosen. The partition of trainind and test dataset is done as below : 
-```{r}
-#training set
-wine_train <- wine[1:3750, ]
+##### *Splitting the data into training and testing sets*
+We split our data into two different sets : 
 
-#test set
-wine_test <- wine[3751:4898, ]
+  - Training set for the model fitting (learning the patterns)
+  - Testing set for estimating the model’s accuracy
+
+
+```{r}
+# we set the seed to get reproducible results
+set.seed(10)
+
+# split the datasets
+dataset_size <- dim(df_wine)[1]
+train_set_size <- round(0.8*dataset_size)
+train_index <- sample(dataset_size, train_set_size, replace=FALSE)
+
+training_data <- df_wine[train_index, ]
+test_data <- df_wine[-train_index,]
 ```
 
