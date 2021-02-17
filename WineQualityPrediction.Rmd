@@ -10,7 +10,7 @@ output:
 ---
 
 
-```{r echo=FALSE}
+```{r include=FALSE}
 # import all the necessary library
 library(caret)
 library(forcats)
@@ -29,10 +29,24 @@ For each wine, a laboratory analysis measured characteristics such as acidity, s
 
 
 
-The objective that we want to achieve throw this notebook is to build a machine learning model of classification type, that will predict if a wine is considered as good or note. The model takes as input some wine characteristics (alcohol content, acidity, sugar proportion, etc), and gives as output a binary variable that describes the quality of the wine ("Good" or "Bad"). We'll use a decision tree as our classification model.
+The objective that we want to achieve through this notebook is to build a machine learning model of classification type, that will predict if a wine is considered as good or not. The model takes as input some wine characteristics (alcohol content, acidity, sugar proportion, etc), and gives as output a binary variable that describes the quality of the wine ("Good" or "Bad"). We'll use a decision tree as our classification model. We'll then use Random Forest to improve our classification scores.
+
+
+##### *Used libraries*
+
+
+
+The execution of this notebook needs the following library : 
+
+ - caret
+ - forcats
+ - ggplot2
+ - rpart
+ - rpart.plot
+ - randomForest
 
 ##### *Dataset description*
-The wine dataset is composed by a total of 14 different variables : 
+The wine dataset is composed by a total of 13 different variables : 
 
 **1- fixed acidity (tartaric acid - g/dm3)** : most acids involved with wine or fixed or nonvolatile (do not evaporate readily)
 
@@ -111,7 +125,7 @@ Let's take a look at the distribution of the wine quality score in our dataset. 
 
 ```{r}
 # Simple Bar Plot
-hist(df_wine$quality, main="Wine Quality Score Distribution",ylab="Count", xlab="Wine Quality Score", breaks=10, , col= "darkgreen")
+hist(df_wine$quality, main="Wine Quality Score Distribution", ylab="Count", xlab="Wine Quality Score", breaks=10, , col= "darkgreen")
 ```
 
 Now let's check the frequency of each wine quality score. From the above table, we see that an approximate 45% of the wine quality scores have a 6 score value.
@@ -204,7 +218,7 @@ rpart.plot(rpart_model, extra=101)
 # Model Evaluation
 The evaluation of machine learning algorithms consists in comparing the predicted value with the actual outcome. The confusion matrix displays the predicted and observed values in a table and provides additional statistics summary. We'll the `confusionMatrix` function to display the following metric about our classification model :
 
-  - **The confusion matrix** : The confusion matrix is a simple table with the cross tabulation of the   predicted values with the actual observed values. All values are in absolute numbers of observations and predictions, so for example the True Positive is the number of predicted values that are exactly the same as the actual values. In our case, a True Positive is a Bad wine (in terms of quality) that was correctly classsified as Bad.
+  - **The confusion matrix** : The confusion matrix is a simple table with the cross tabulation of the   predicted values with the actual observed values. All values are in absolute numbers of observations and predictions, so for example the True Positive is the number of predicted values that are exactly the same as the actual values. In our case, a True Positive is a Bad wine (in terms of quality) that was correctly classified as Bad.
  
   - **Sensitivity** :  It's the proportion of positive values when they are actually positive, i.e. the ability to predict positive values.
   
@@ -223,7 +237,7 @@ Using the `confusionMatrix` function on our decision tree model, we get the foll
  - Sensitivity : 0.9601 
  - Specificity : 0.2546 
  
-The overall accuracy score is pretty good, but we have a low Specifity score which mean that we globally fail to detect a True Negative (in our case a True Negative -> Correctly classified as Good wine). In order to improve classification score, we're gonna use in the next section a more complex classification model, which is a Random Forest classifier.
+The overall accuracy score is pretty good, but we have a low Specificity score which mean that we globally fail to detect a True Negative (in our case a True Negative -> Correctly classified as Good wine). In order to improve classification score, we're gonna use in the next section a more complex classification model, which is a Random Forest classifier.
 
 
 # Improve model Accuracy by using a Random Forest
@@ -242,20 +256,29 @@ Same as for the decision tree model,  we use the `confusionMatrix` function to e
  - Sensitivity : 0.9708 
  - Specificity : 0.5720 
 
-998 wines are classified as low-quality wines and 155 are high-quality wines. The accuracy of the model is 88.75%. That means 11.75% (116+30) of wines are predicted wrong by the model. If a customer picks a high-quality wine there is only 2.3% (30/(998+116+30+155)) chance that wine is low quality wine. In the Random Forest model, the prediction of high-quality wines is more accurate compared to a single decision tree model.
+998 wines are classified as low-quality wines and 155 are high-quality wines. The accuracy of the model is 88.5%. That means 11.75% (116+30) of wines are predicted wrong by the model. If a customer picks a high-quality wine there is only 15% (30/(30+155)) chance that wine is low quality wine. In the Random Forest model, the prediction of high-quality wines is more accurate compared to a single decision tree model.
 
 
-The sensitivity (total high-quality wines predicted by high-quality wines) is the percentage of predicted low-quality wines 96% which is good whereas the specificity gives the percentage of predicted high-quality wines i.e., only 57%. This could be explained because the model may be biased in classifying more low-quality wines due to an unbalanced wine quality dataset.
+ (total low-quality wines predicted by low-quality wines) is the percentage of predicted low-quality wines 97% which is good whereas the specificity gives the percentage of predicted high-quality wines i.e. only 57%. This could be explained because the model may be biased in classifying more low-quality wines due to an unbalanced wine quality dataset.
 ```{r}
 rf_predict <- predict(rf_model,  test_data[, -13])
 confusionMatrix(rf_predict, test_data[, 13])
+```
+##### Identifying Important Variables
+In this section, we're gonna use the `varImpPlot` function that return a plot which describes the importance of the dataset variable in taking a decision (classify a wine as Good or Bad). The measure of importance of a variable is taken as the mean decrease in the Gini coefficient, which is a measure of statistical dispersion.
+
+The variables which are highly important in determining the high-quality wine are ordered top-to-bottom with most-to-least important in the below plot. We from the plot that alcohol is a very important variable with more than 250 as a mean decrease in Gini followed by density and residual.acidity  for the classification of wines.
+
+In random forest models, alcohol is an important variable in deciding the quality of the wine. If we know what to look for at the labels before purchasing wine, there is a high chance of picking the right quality wine. The accuracy of predicting high-quality wines, using Random Forest, wine quality is 88.5%%. From the confusion matrix, 3% (35) of low-quality wines are predicted as high-quality type. If a customer wants to enjoy a high-quality wine, the chances of picking high-quality wine are high.
+
+```{r}
+varImpPlot(rf_model)
 ```
 
 
 
 
-
 # Conclusion
-The objective of this notebook was to build a classification model able to predict the quality class of a given wine (Good or Bad) based on its characteristics. After a first step of exploratory data analysis that helped us to better understand the data we're working on, we performed some transformations on our data to facilitate the construction of classification model. After training a first decision tree model, we we're not totaly satisfied with the model performances, so we decided to try another more complex classification model which is a Random Forest Classifier. 
+The objective of this notebook was to build a classification model able to predict the quality class of a given wine (Good or Bad) based on its characteristics. After a first step of exploratory data analysis that helped us to better understand the data we're working on, we performed some transformations on our data to facilitate the construction of classification model. After training a first decision tree model, we we're not totally satisfied with the model performances, so we decided to try another more complex classification model which is a Random Forest Classifier. 
 
 Prediction of high-quality wines with Random Forest model is good with less overfitting problems and with high accuracy (from step4); because of the aggregation of decision trees. To pick a desired quality wine, it is always important to check few parameters (from step5) and it’s value ranges to know whether we picked the right one or not. Overall, the correct prediction of wines is necessary because there would be chances that the wine we have picked would be not our interest.
