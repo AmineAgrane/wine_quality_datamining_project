@@ -1,0 +1,217 @@
+# %% [markdown]
+# # K-means clustering of wine data 
+# 
+# The objective of this report is to describe the implementation of a k-Means algorithm and discuss the design decisions. We test our k-Means algorithm  on the Wine dataset and discuss the performance of it. We are using clustering for classifying the colour.
+
+# %% [code] {"_execution_state":"idle"}
+require(readr)
+require(data.table)
+
+require(stats)
+require(graphics)
+
+
+require(ggplot2)
+require(ggthemes)
+require(grid)
+require(gridExtra)
+require(plotly)
+require(Amelia)
+require(corrplot)
+require(lattice)
+
+require(caret)     # for "confusionMatrix" method
+require(cluster)
+require(clustertend)     # for statistical assessment clustering tendency
+require(factoextra)     # for data visualization
+
+require(caTools)
+
+require(randomForest)
+require(rpart)
+require(rpart.plot)
+
+require(ISLR)
+require(e1071)
+
+# %% [markdown]
+# ### Reading the data
+
+# %% [code]
+#Reading data
+data_wine <- read.csv("../input/wine-quality/winequality.csv")
+
+#It show the first few rows 
+head(data_wine)
+
+# %% [markdown]
+# ### Prepare the data:
+# After we uploaded the data wine, we drop the quality label and we digitize the color data, 1 if it is red and 0 for white.
+
+# %% [code]
+colSums(is.na(data_wine))
+
+# %% [code]
+Quality<-data_wine$quality
+data_wine$quality<-NULL
+
+# %% [code]
+data_wine$color<- ifelse(data_wine$color == "red",1,0)
+
+# %% [code]
+scaled_dataset_wine <- scale(data_wine)
+scaled_dataset_wine <-
+  as.data.frame(scaled_dataset_wine)
+dim(scaled_dataset_wine)
+head(scaled_dataset_wine)
+
+# %% [code]
+scaled_dataset_wine_for_predict <-
+  cbind(scaled_dataset_wine, color = data_wine$color)
+scaled_dataset_wine_for_predict <-
+  as.data.frame(scaled_dataset_wine_for_predict)
+
+# %% [code]
+head(data_wine)
+
+# %% [markdown]
+#  ### Determining optimal number of clusters:
+# We need to determine the number of clusters for which the model is not overfitting but clusters the data as per the actual distribution using the Elbow Method. In elbow method, percentage of variance is explained as a function of the number of clusters plotted.
+
+# %% [markdown]
+# ### Elbow Method
+# This method allows us to identify the number of clusters to use to segment the wine data.
+
+# %% [code]
+wcss <- vector()
+
+for (i in 1:10) {
+    
+  wcss[i] = sum(kmeans(data_wine, i)$withinss)
+    
+}
+
+plot(
+  1:10,
+  wcss,
+  type = 'b',
+  main = paste('The Elbow Method'),
+  xlab = 'Number of clusters',
+  ylab = 'WCSS'
+)
+
+# %% [markdown]
+#  From the plot, where the sum of squares for number of clusters have been plotted from 1 to 10, we have chosen 2 as the number of clusters as the value of within groups sum of squares does not change significantly after 2.
+
+# %% [markdown]
+# ### Application of the k-means clustering algorithm
+# Now that we apply the Elbow method, we  apply a k-means clustering algorithm with 2 centroids.
+
+# %% [code]
+Clusters <- kmeans(data_wine, centers =2 , nstart = 25)
+
+# %% [code]
+Clusters
+
+# %% [code]
+Clusters$cluster
+
+# %% [code]
+data_wine$quality<-Quality
+
+# %% [code]
+data_wine$cluster<-Clusters$cluster
+
+# %% [code]
+data_wine
+
+# %% [markdown]
+# ### Visualisation of the clusters of Wine quality data
+
+# %% [code]
+clusplot(
+  data_wine,
+ Clusters$cluster,
+  lines = 0,
+  shade = TRUE,
+  color = TRUE,
+  labels = 2,
+  plotchar = FALSE,
+  span = TRUE,
+  main = paste('Clusters of Wine Quality Data')
+)
+
+# %% [markdown]
+# ### Model Evaluation
+# Now we calculate Hopkin's statistic for given dataset and random dataset.
+
+# %% [code]
+random_dataset_wine <-
+  apply(data_wine, 2, function(x) {
+    runif(length(x), min(x), (max(x)))
+  })
+random_dataset_wine <- as.data.frame(random_dataset_wine)
+head(random_dataset_wine)
+
+# %% [code]
+scaled_random_dataset_wine <- scale(random_dataset_wine)
+dim(scaled_random_dataset_wine)
+head(scaled_random_dataset_wine)
+
+scaled_random_dataset_wine <-
+  as.data.frame(scaled_random_dataset_wine)
+
+# %% [code]
+scaled_dw_plot <-
+  fviz_pca_ind(
+    prcomp(scaled_dataset_wine),
+    title = "PCA - Wine Quality Data",
+    habillage = data_wine$color,
+    geom = "point",
+    legend = "bottom"
+  )
+scaled_rdw_plot <-
+  fviz_pca_ind(
+    prcomp(scaled_random_dataset_wine),
+    title = "PCA - Random Data",
+    habillage = data_wine$color,
+    geom = "point",
+    legend = "bottom"
+  )
+
+
+grid.arrange(scaled_dw_plot,
+             scaled_rdw_plot,
+             nrow = 2,
+             ncol = 1)
+
+# %% [code]
+distance_matrix_dw <- dist(data_wine) ^ 2
+distance_matrix_rdw <- dist(random_dataset_wine) ^ 2
+
+# %% [code]
+hclust_dw <- hclust(distance_matrix_dw, method = "ward.D2")
+hclust_rdw <- hclust(distance_matrix_rdw, method = "ward.D2")
+
+plot(hclust_dw)
+plot(hclust_rdw)
+
+dend_dw_plot <- fviz_dend(hclust_dw, k = 2, as.ggplot = TRUE, show_labels = FALSE)
+dend_rdw_plot <- fviz_dend(hclust_rdw, k = 2, as.ggplot = TRUE, show_labels = FALSE)
+
+grid.arrange(dend_dw_plot, dend_rdw_plot, nrow = 2, ncol = 1)
+
+# %% [code]
+hop_stat_dw <-
+  get_clust_tendency(scaled_dataset_wine,
+                     n = nrow(scaled_dataset_wine) - 1,
+                     graph = FALSE)
+hop_stat_dw$hopkins_stat
+
+hop_stat_rdw <-
+  get_clust_tendency(
+    scaled_random_dataset_wine,
+    n = nrow(scaled_random_dataset_wine) - 1,
+    graph = FALSE
+  )
+hop_stat_rdw$hopkins_stat
